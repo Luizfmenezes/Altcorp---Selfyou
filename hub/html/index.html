@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto Service · Altcorp</title>
+  <link rel="icon" href="assets/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav__brand">
+      <img src="assets/logo-branco.png" alt="Altcorp" />
+      <div class="wm">Auto Service<small>ALTCORP · PAINEL DE SERVIÇOS</small></div>
+    </div>
+    <div class="nav__meta" style="display:flex;align-items:center;gap:10px">
+      <span class="chip"><span class="dot" id="globalDot"></span> <span id="globalTxt">Verificando…</span></span>
+      <a class="chip chip--btn" href="/logout" title="Encerrar sessão">⎋ Sair</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero__grid">
+      <div>
+        <div class="kicker">Sistema local · 04 serviços · Docker Compose</div>
+        <h1>Central de<br><em>ferramentas</em></h1>
+        <p class="lede">Quatro utilitários independentes, orquestrados em uma única máquina.
+          Selecione um serviço para abrir sua interface dedicada.</p>
+      </div>
+      <div class="hero__mark" aria-hidden="true">
+        <img src="assets/logo-azul-escuro.png" alt="" />
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid" id="grid"></div>
+
+    <section class="sys">
+      <div class="sys__label">// Especificações do ambiente</div>
+      <div class="sys__rows">
+        <div><span>Orquestração</span><b>Docker Compose</b></div>
+        <div><span>Rede</span><b>autoservice-net (bridge)</b></div>
+        <div><span>Hub</span><b>Nginx · :8080</b></div>
+        <div><span>Host</span><b>localhost</b></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <img src="assets/logo-branco.png" alt="Altcorp" />
+    <span>© Altcorp — Auto Service · ambiente local de produtividade</span>
+  </footer>
+
+  <script>
+    // oCIS abre em porta dedicada no MESMO host (funciona em localhost e no domínio)
+    const OCIS_URL = location.protocol + "//" + location.hostname + ":9200";
+
+    const SERVICES = [
+      { n:"01", key:"ocis", name:"Gerenciador de Arquivos", engine:"ownCloud / oCIS",
+        desc:"Armazene, sincronize e compartilhe arquivos com interface web completa e controle de acesso.",
+        icon:"📁", url:"https://"+location.hostname+":9200", port:"9200", proto:"HTTPS", accent:"steel",
+        health:{url:"https://"+location.hostname+":9200", mode:"no-cors"},
+        note:"Login próprio · 1ª vez: aceite o aviso de certificado do navegador.",
+        feats:["Upload & sync","Compartilhamento","Login: admin (oCIS)"] },
+
+      { n:"02", key:"stirling", name:"Ferramentas de PDF", engine:"Stirling-PDF",
+        desc:"Mais de 50 operações em PDF: juntar, dividir, converter, comprimir, assinar e OCR — tudo offline.",
+        icon:"📄", url:"/pdf/", port:"/pdf", proto:"gateway", accent:"clay",
+        health:{url:"/pdf/", mode:"cors"},
+        feats:["Juntar / dividir","Converter & comprimir","50+ ferramentas"] },
+
+      { n:"03", key:"bgremover", name:"Removedor de Fundo", engine:"BackgroundRemover",
+        desc:"Recorte objetos automaticamente com IA (u2net). Escolha o modelo, refine bordas e defina o fundo.",
+        icon:"✂️", url:"/bg/", port:"/bg", proto:"gateway", accent:"sage",
+        health:{url:"/bg/healthz", mode:"cors"},
+        feats:["3 modelos de IA","Alpha matting","Fundo transparente / cor"] },
+
+      { n:"04", key:"paddleocr", name:"OCR — Extração de Texto", engine:"PaddleOCR",
+        desc:"Reconheça texto em imagens e documentos em 8 idiomas, com regiões detectadas e confiança por linha.",
+        icon:"🔎", url:"/ocr/", port:"/ocr", proto:"gateway", accent:"ochre",
+        health:{url:"/ocr/healthz", mode:"cors"},
+        feats:["8 idiomas","Imagem anotada","Exporta .txt / .json"] },
+    ];
+
+    const grid = document.getElementById("grid");
+    grid.innerHTML = SERVICES.map(s => `
+      <a class="card card--${s.accent}" href="${s.url}" target="_blank" rel="noopener" id="card-${s.key}">
+        <div class="card__corner tl"></div><div class="card__corner br"></div>
+        <div class="card__head">
+          <span class="card__n">${s.n}</span>
+          <span class="card__status" id="st-${s.key}"><span class="dot dot--wait"></span> ...</span>
+        </div>
+        <div class="card__icon">${s.icon}</div>
+        <h2 class="card__title">${s.name}</h2>
+        <div class="card__engine">${s.engine}</div>
+        <p class="card__desc">${s.desc}</p>
+        ${s.note?`<div class="card__note">⚠ ${s.note}</div>`:""}
+        <ul class="card__feats">${s.feats.map(f=>`<li>${f}</li>`).join("")}</ul>
+        <div class="card__foot">
+          <span class="card__addr">${s.proto==="gateway"?s.port:":"+s.port} · ${s.proto}</span>
+          <span class="card__go">Abrir →</span>
+        </div>
+      </a>`).join("");
+
+    // ---- Verificação de status (best-effort) ----
+    function ping(h){
+      return new Promise(resolve=>{
+        const ctrl=new AbortController();
+        const t=setTimeout(()=>{ctrl.abort();resolve(false);},3500);
+        const opts={signal:ctrl.signal,cache:"no-store"};
+        if(h.mode==="no-cors") opts.mode="no-cors";
+        fetch(h.url,opts).then(()=>{clearTimeout(t);resolve(true);})
+                         .catch(()=>{clearTimeout(t);resolve(false);});
+      });
+    }
+    async function checkAll(){
+      let up=0;
+      await Promise.all(SERVICES.map(async s=>{
+        const ok=await ping(s.health);
+        if(ok) up++;
+        const el=document.getElementById("st-"+s.key);
+        el.innerHTML = ok
+          ? '<span class="dot dot--ok"></span> online'
+          : '<span class="dot dot--off"></span> offline';
+      }));
+      const g=document.getElementById("globalTxt"), gd=document.getElementById("globalDot");
+      g.textContent = `${up}/${SERVICES.length} serviços online`;
+      gd.className = "dot " + (up===SERVICES.length?"dot--ok":up>0?"dot--warn":"dot--off");
+    }
+    checkAll();
+    setInterval(checkAll, 15000);
+  </script>
+</body>
+</html>

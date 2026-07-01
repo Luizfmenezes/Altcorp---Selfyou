@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="{{ prefix }}/" />
+  <title>Removedor de Fundo · Auto Service</title>
+  <link rel="icon" href="static/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --navy:#1c4362; --navy-deep:#10283b; --navy-line:#2b5a7e;
+      --paper:#f3efe7; --paper-2:#ece6da; --card:#fbf9f4;
+      --ink:#152430; --muted:#5e6e79; --line:#d8d0c2;
+      --accent:#3f7d6e;      /* verde sálvia — tema do bg remover */
+      --accent-ink:#2a5c50;
+      --ok:#3f7d6e; --err:#b1503f;
+      --sans:"Manrope",system-ui,sans-serif;
+      --disp:"Bricolage Grotesque",serif;
+      --mono:"Space Mono",monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:var(--sans); color:var(--ink); background:var(--paper);
+      background-image:
+        linear-gradient(rgba(28,67,98,.035) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(28,67,98,.035) 1px,transparent 1px);
+      background-size:26px 26px;
+      min-height:100vh;
+    }
+    a{color:inherit}
+    /* ---- Top nav ---- */
+    .nav{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:16px 26px;background:var(--navy);color:#fff;
+      border-bottom:3px solid var(--navy-deep);
+    }
+    .nav__brand{display:flex;align-items:center;gap:12px}
+    .nav__brand img{height:30px;width:auto;display:block}
+    .nav__brand .wm{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.3px}
+    .nav__brand .wm small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:3px;opacity:.7;font-weight:400}
+    .nav__back{font-family:var(--mono);font-size:12px;text-decoration:none;color:#cfe0ec;border:1px solid var(--navy-line);padding:8px 14px;border-radius:2px;transition:.15s}
+    .nav__back:hover{background:var(--navy-deep);color:#fff}
+    /* ---- Layout ---- */
+    .wrap{max-width:960px;margin:0 auto;padding:44px 24px 80px}
+    .kicker{font-family:var(--mono);font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent-ink);display:flex;align-items:center;gap:10px}
+    .kicker::before{content:"";width:26px;height:2px;background:var(--accent)}
+    h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,5vw,46px);line-height:1.02;margin:14px 0 10px}
+    .lede{color:var(--muted);font-size:16px;max-width:620px}
+    /* ---- Panels ---- */
+    .panel{
+      background:var(--card);border:1px solid var(--line);border-radius:4px;
+      padding:26px;margin-top:28px;position:relative;
+    }
+    .panel::before,.panel::after{content:"";position:absolute;width:9px;height:9px;border:2px solid var(--navy);}
+    .panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+    .panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+    .panel__label{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+    .step-n{color:var(--accent);font-weight:700}
+    /* ---- Dropzone ---- */
+    .drop{border:2px dashed var(--line);border-radius:4px;padding:44px 20px;text-align:center;cursor:pointer;transition:.15s;background:var(--paper)}
+    .drop:hover,.drop.drag{border-color:var(--accent);background:#eef3f1}
+    .drop .ico{font-size:40px}
+    .drop p{color:var(--muted);font-size:14px;margin-top:10px}
+    .drop b{color:var(--ink)}
+    #fileName{font-family:var(--mono);color:var(--accent-ink);font-size:13px;margin-top:8px}
+    input[type=file]{display:none}
+    /* ---- Options ---- */
+    .opts{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+    .field{display:flex;flex-direction:column;gap:10px}
+    .field > .flabel{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+    .seg{display:flex;gap:8px;flex-wrap:wrap}
+    .seg label{flex:1;min-width:96px;cursor:pointer}
+    .seg input{position:absolute;opacity:0;pointer-events:none}
+    .seg .chip{display:block;border:1px solid var(--line);border-radius:3px;padding:10px 12px;background:var(--paper);transition:.15s}
+    .seg .chip b{display:block;font-size:13px}
+    .seg .chip span{font-size:11px;color:var(--muted)}
+    .seg input:checked + .chip{border-color:var(--accent);background:#eef3f1;box-shadow:inset 0 0 0 1px var(--accent)}
+    .toggle{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+    .toggle input{position:absolute;opacity:0}
+    .toggle .track{width:44px;height:24px;border-radius:20px;background:#cfc8b8;position:relative;transition:.18s;flex:none}
+    .toggle .track::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+    .toggle input:checked + .track{background:var(--accent)}
+    .toggle input:checked + .track::after{transform:translateX(20px)}
+    .toggle .txt small{display:block;color:var(--muted);font-size:12px}
+    .bgrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .swatch{width:34px;height:34px;border-radius:3px;border:1px solid var(--line);cursor:pointer;padding:0;overflow:hidden}
+    .swatch.checker{background:
+      linear-gradient(45deg,#ccc 25%,transparent 25%),
+      linear-gradient(-45deg,#ccc 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#ccc 75%),
+      linear-gradient(-45deg,transparent 75%,#ccc 75%);
+      background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;background-color:#fff}
+    .swatch.sel{outline:2px solid var(--accent);outline-offset:1px}
+    input[type=color]{width:34px;height:34px;border:1px solid var(--line);border-radius:3px;background:none;cursor:pointer;padding:2px}
+    /* ---- Button ---- */
+    .btn{width:100%;margin-top:24px;padding:15px;border:none;border-radius:3px;background:var(--navy);color:#fff;font-weight:700;font-size:15px;cursor:pointer;font-family:var(--disp);letter-spacing:.3px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn:hover:not(:disabled){background:var(--navy-deep)}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .status{margin-top:16px;font-size:14px;color:var(--muted);min-height:20px;font-family:var(--mono)}
+    .status.err{color:var(--err)}
+    /* ---- Result ---- */
+    .result{margin-top:28px;display:none}
+    .result.show{display:block;animation:fade .35s ease}
+    @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .frame{border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--card)}
+    .frame .cap{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--line)}
+    .frame .imgbox{padding:0;display:grid;place-items:center;min-height:160px}
+    .frame.checker .imgbox{background:
+      linear-gradient(45deg,#e2ddd0 25%,transparent 25%),
+      linear-gradient(-45deg,#e2ddd0 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#e2ddd0 75%),
+      linear-gradient(-45deg,transparent 75%,#e2ddd0 75%);
+      background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
+    .frame img{max-width:100%;display:block}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:16px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+    .meta .cell{background:var(--card);padding:14px 12px}
+    .meta .k{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+    .meta .v{font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px}
+    .dlrow{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+    .dl{flex:1;min-width:180px;text-align:center;padding:13px;border-radius:3px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;font-family:var(--disp);font-size:15px;border:none;cursor:pointer;line-height:1.2}
+    .dl:hover{background:var(--accent-ink)}
+    .dl.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+    .dl.ghost:hover{border-color:var(--accent);color:var(--accent-ink)}
+    /* ---- Spinner ---- */
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #cfc8b8;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    footer{text-align:center;padding:30px;color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:1px}
+    @media (max-width:640px){
+      .opts{grid-template-columns:1fr}
+      .compare{grid-template-columns:1fr}
+      .meta{grid-template-columns:repeat(2,1fr)}
+      .wrap{padding:32px 16px 60px}
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav__brand">
+      <img src="static/logo-branco.png" alt="Altcorp" />
+      <div class="wm">Auto Service<small>ALTCORP</small></div>
+    </div>
+    <a class="nav__back" href="/">← HUB</a>
+  </nav>
+
+  <div class="wrap">
+    <div class="kicker">Serviço 03 · Imagem</div>
+    <h1>Removedor de Fundo</h1>
+    <p class="lede">Recorte o objeto principal de qualquer imagem com modelos de IA (u2net). Escolha o modelo, refine as bordas e defina o fundo de saída.</p>
+
+    <form id="form">
+      <!-- 1. Upload -->
+      <div class="panel">
+        <div class="panel__label"><span class="step-n">01</span> — Selecione a imagem</div>
+        <label class="drop" id="drop">
+          <div class="ico">🖼️</div>
+          <p><b>Clique para escolher</b> ou arraste a imagem aqui</p>
+          <p style="font-size:12px">PNG · JPG · WEBP · BMP — até {{ max_mb }} MB</p>
+          <div id="fileName"></div>
+          <input type="file" id="file" name="image" accept="image/*" />
+        </label>
+      </div>
+
+      <!-- 2. Opções -->
+      <div class="panel">
+        <div class="panel__label"><span class="step-n">02</span> — Configurações</div>
+        <div class="opts">
+          <div class="field">
+            <span class="flabel">Modelo de IA</span>
+            <div class="seg">
+              <label><input type="radio" name="model" value="u2net" checked><span class="chip"><b>Geral</b><span>u2net · equilibrado</span></span></label>
+              <label><input type="radio" name="model" value="u2netp"><span class="chip"><b>Rápido</b><span>u2netp · leve</span></span></label>
+              <label><input type="radio" name="model" value="u2net_human_seg"><span class="chip"><b>Pessoas</b><span>human_seg</span></span></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="flabel">Refino de bordas</span>
+            <label class="toggle">
+              <input type="checkbox" id="alpha" name="alpha_matting">
+              <span class="track"></span>
+              <span class="txt">Alpha matting<small>Bordas mais suaves (mais lento)</small></span>
+            </label>
+          </div>
+
+          <div class="field" style="grid-column:1/-1">
+            <span class="flabel">Fundo de saída</span>
+            <div class="bgrow" id="bgrow">
+              <button type="button" class="swatch checker sel" data-bg="transparent" title="Transparente"></button>
+              <button type="button" class="swatch" data-bg="white" style="background:#fff" title="Branco"></button>
+              <input type="color" id="bgcolor" value="#1c4362" title="Cor personalizada">
+              <span id="bgLabel" style="font-family:var(--mono);font-size:12px;color:var(--muted)">Transparente (PNG)</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn" id="submit" type="submit" disabled>✂️ Remover fundo</button>
+        <div class="status" id="status"></div>
+      </div>
+    </form>
+
+    <!-- 3. Resultado -->
+    <div class="result panel" id="result">
+      <div class="panel__label"><span class="step-n">03</span> — Resultado</div>
+      <div class="compare">
+        <div class="frame"><div class="cap">Original</div><div class="imgbox"><img id="imgIn" alt="Original"></div></div>
+        <div class="frame checker" id="outFrame"><div class="cap">Sem fundo</div><div class="imgbox"><img id="imgOut" alt="Resultado"></div></div>
+      </div>
+      <div class="meta">
+        <div class="cell"><div class="k">Dimensões</div><div class="v" id="mDim">—</div></div>
+        <div class="cell"><div class="k">Modelo</div><div class="v" id="mModel">—</div></div>
+        <div class="cell"><div class="k">Tempo</div><div class="v" id="mTime">—</div></div>
+        <div class="cell"><div class="k">Tamanho</div><div class="v" id="mSize">—</div></div>
+      </div>
+      <div class="dlrow">
+        <a class="dl" id="download" download="sem_fundo.png">⬇ Baixar imagem</a>
+        <button class="dl ghost" type="button" id="again">↺ Nova imagem</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>ALTCORP · AUTO SERVICE — BACKGROUNDREMOVER (u2net) · FLASK</footer>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const drop=$("#drop"), fileInput=$("#file"), fileName=$("#fileName"),
+      submit=$("#submit"), statusEl=$("#status"), result=$("#result"),
+      imgIn=$("#imgIn"), imgOut=$("#imgOut"), download=$("#download"),
+      outFrame=$("#outFrame"), bgcolor=$("#bgcolor"), bgLabel=$("#bgLabel");
+
+    let background = "transparent";
+
+    function fmtBytes(b){ b=+b; if(!b) return "—"; const u=["B","KB","MB"]; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed(b<10&&i>0?1:0)+" "+u[i]; }
+
+    function setFile(f){
+      if(!f) return;
+      const dt=new DataTransfer(); dt.items.add(f); fileInput.files=dt.files;
+      fileName.textContent="▸ "+f.name+"  ("+fmtBytes(f.size)+")";
+      submit.disabled=false;
+      imgIn.src=URL.createObjectURL(f);
+    }
+    fileInput.addEventListener("change",e=>setFile(e.target.files[0]));
+    ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("drag");}));
+    ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("drag");}));
+    drop.addEventListener("drop",e=>setFile(e.dataTransfer.files[0]));
+
+    // Seleção de fundo
+    document.querySelectorAll(".swatch").forEach(sw=>{
+      sw.addEventListener("click",()=>{
+        document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("sel"));
+        sw.classList.add("sel");
+        background = sw.dataset.bg;
+        bgLabel.textContent = background==="transparent" ? "Transparente (PNG)" : "Branco (JPG)";
+      });
+    });
+    bgcolor.addEventListener("input",()=>{
+      document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("sel"));
+      background = bgcolor.value;
+      bgLabel.textContent = bgcolor.value.toUpperCase()+" (JPG)";
+    });
+
+    $("#form").addEventListener("submit",async e=>{
+      e.preventDefault();
+      if(!fileInput.files[0]) return;
+      submit.disabled=true; result.classList.remove("show");
+      statusEl.className="status";
+      statusEl.innerHTML='<span class="spinner"></span> Processando… a 1ª execução baixa o modelo, pode demorar.';
+
+      const fd=new FormData();
+      fd.append("image",fileInput.files[0]);
+      fd.append("model",document.querySelector('input[name=model]:checked').value);
+      fd.append("alpha_matting",$("#alpha").checked?"true":"false");
+      fd.append("background",background);
+
+      try{
+        const res=await fetch("remove",{method:"POST",body:fd});
+        if(!res.ok){ const err=await res.json().catch(()=>({})); throw new Error(err.error||("Erro "+res.status)); }
+        const blob=await res.blob();
+        const url=URL.createObjectURL(blob);
+        imgOut.src=url; download.href=url;
+        const fmt=res.headers.get("X-Output-Format")||"png";
+        download.download="sem_fundo."+fmt;
+        outFrame.classList.toggle("checker", background==="transparent");
+        // metadados
+        $("#mDim").textContent=res.headers.get("X-Dimensions")||"—";
+        $("#mModel").textContent=(res.headers.get("X-Model")||"—").replace("u2net_human_seg","human");
+        const t=res.headers.get("X-Process-Time"); $("#mTime").textContent=t?(+t).toFixed(1)+"s":"—";
+        $("#mSize").textContent=fmtBytes(res.headers.get("X-Out-Bytes"));
+        result.classList.add("show");
+        statusEl.textContent="✓ Concluído com sucesso.";
+        result.scrollIntoView({behavior:"smooth",block:"nearest"});
+      }catch(err){
+        statusEl.className="status err"; statusEl.textContent="✕ "+err.message;
+      }finally{ submit.disabled=false; }
+    });
+
+    $("#again").addEventListener("click",()=>{ drop.scrollIntoView({behavior:"smooth"}); });
+  </script>
+</body>
+</html>

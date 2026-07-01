@@ -1,0 +1,150 @@
+# ==========================================================================
+#  Auto Service — Gateway com login único + 4 serviços
+# --------------------------------------------------------------------------
+#  Arquiteto: Cláudio (DevOps / Software Architect)
+#
+#  Arquitetura:
+#   - GATEWAY (Nginx) é o ÚNICO ponto de entrada. Faz reverse proxy e exige
+#     login (forward-auth) para: Hub (/), PDF (/pdf), Removedor de Fundo
+#     (/bg) e OCR (/ocr). Serviços internos NÃO expõem portas.
+#   - AUTH (Flask) valida usuário/senha do .env e emite o cookie de sessão.
+#   - oCIS mantém o login PRÓPRIO na porta 9200 (é um provedor OIDC).
+#
+#  Suba tudo com:   docker compose up -d --build
+#  Acesse em:       http://localhost:8080   (ou pelo domínio na porta 80)
+# ==========================================================================
+
+name: auto-service
+
+services:
+
+  # ----------------------------------------------------------------------
+  # GATEWAY — Nginx (reverse proxy + auth_request + Hub estático)
+  # ----------------------------------------------------------------------
+  hub:
+    image: nginx:1.27-alpine
+    container_name: as-hub
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-80}:80"     # domínio (altservice.altcorphub.com)
+      - "${HUB_PORT:-8080}:80"       # acesso local alternativo
+    volumes:
+      - ./hub/html:/usr/share/nginx/html:ro
+      - ./hub/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - autoservice-net
+    depends_on:
+      - auth
+      - ocis
+      - stirling-pdf
+      - background-remover
+      - paddleocr
+
+  # ----------------------------------------------------------------------
+  # AUTH — serviço de login único (forward-auth para o Nginx)
+  # ----------------------------------------------------------------------
+  auth:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    image: auto-service/auth:latest
+    container_name: as-auth
+    restart: unless-stopped
+    environment:
+      AUTH_USER: "${AUTH_USER:-admin}"
+      AUTH_PASSWORD: "${AUTH_PASSWORD:-admin}"
+      AUTH_SECRET_KEY: "${AUTH_SECRET_KEY:-change-this-secret}"
+      AUTH_SESSION_HOURS: "${AUTH_SESSION_HOURS:-12}"
+      AUTH_COOKIE_SECURE: "${AUTH_COOKIE_SECURE:-false}"
+    networks:
+      - autoservice-net
+
+  # ----------------------------------------------------------------------
+  # 1) GERENCIADOR DE ARQUIVOS — ownCloud Infinite Scale (oCIS)
+  #    Login PRÓPRIO. HTTPS na porta 9200 (o IDP embutido EXIGE issuer https).
+  #    Certificado autoassinado: aceite o aviso do navegador uma vez.
+  # ----------------------------------------------------------------------
+  ocis:
+    image: owncloud/ocis:latest
+    container_name: as-ocis
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ocis init || true; ocis server"]
+    environment:
+      OCIS_URL: "${OCIS_URL:-https://localhost:9200}"
+      OCIS_INSECURE: "${OCIS_INSECURE:-true}"
+      PROXY_HTTP_ADDR: "0.0.0.0:9200"
+      IDM_ADMIN_PASSWORD: "${OCIS_ADMIN_PASSWORD:-admin}"
+      IDM_CREATE_DEMO_USERS: "${OCIS_CREATE_DEMO_USERS:-true}"
+      OCIS_LOG_LEVEL: "${OCIS_LOG_LEVEL:-error}"
+    ports:
+      - "${OCIS_PORT:-9200}:9200"
+    volumes:
+      - ocis-config:/etc/ocis
+      - ocis-data:/var/lib/ocis
+    networks:
+      - autoservice-net
+
+  # ----------------------------------------------------------------------
+  # 2) FERRAMENTAS DE PDF — Stirling-PDF (interno; servido em /pdf)
+  # ----------------------------------------------------------------------
+  stirling-pdf:
+    image: stirlingtools/stirling-pdf:latest
+    container_name: as-stirling-pdf
+    restart: unless-stopped
+    environment:
+      DOCKER_ENABLE_SECURITY: "false"
+      SECURITY_ENABLELOGIN: "false"
+      # Serve a aplicação sob o subcaminho /pdf (atrás do gateway)
+      SERVER_SERVLET_CONTEXTPATH: "/pdf"
+      LANGS: "pt_BR,en_US"
+    volumes:
+      - stirling-data:/usr/share/tessdata
+      - stirling-configs:/configs
+    networks:
+      - autoservice-net
+
+  # ----------------------------------------------------------------------
+  # 3) REMOVEDOR DE FUNDO — BackgroundRemover (interno; servido em /bg)
+  # ----------------------------------------------------------------------
+  background-remover:
+    build:
+      context: ./services/background-remover
+      dockerfile: Dockerfile
+    image: auto-service/background-remover:latest
+    container_name: as-background-remover
+    restart: unless-stopped
+    volumes:
+      - bgremover-models:/root/.u2net
+    networks:
+      - autoservice-net
+
+  # ----------------------------------------------------------------------
+  # 4) OCR — PaddleOCR (interno; servido em /ocr)
+  # ----------------------------------------------------------------------
+  paddleocr:
+    build:
+      context: ./services/paddleocr
+      dockerfile: Dockerfile
+    image: auto-service/paddleocr:latest
+    container_name: as-paddleocr
+    restart: unless-stopped
+    environment:
+      PADDLE_OCR_LANG: "${PADDLE_OCR_LANG:-pt}"
+    volumes:
+      - paddleocr-models:/root/.paddleocr
+    networks:
+      - autoservice-net
+
+# --------------------------------------------------------------------------
+networks:
+  autoservice-net:
+    driver: bridge
+
+volumes:
+  ocis-config:
+  ocis-data:
+  stirling-data:
+  stirling-configs:
+  bgremover-models:
+  paddleocr-models:

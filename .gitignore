@@ -1,0 +1,16 @@
+# Ambiente
+*.pyc
+__pycache__/
+.venv/
+venv/
+
+# Uploads/resultados temporários dos wrappers
+services/background-remover/uploads/
+services/background-remover/results/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Segredos locais (mantenha .env versionado só se não tiver segredos reais)
+# .env

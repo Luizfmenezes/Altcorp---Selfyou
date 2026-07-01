@@ -1,0 +1,12 @@
+# PyTorch CPU (a lib backgroundremover depende de torch/torchvision)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2
+torchvision==0.17.2
+
+# numpy<2 é obrigatório: torch 2.2.x não é compatível com numpy 2.x
+numpy==1.26.4
+
+backgroundremover==0.2.9
+Flask==3.0.3
+gunicorn==22.0.0
+Werkzeug==3.0.3
