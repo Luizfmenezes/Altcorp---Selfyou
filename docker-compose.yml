@@ -95,8 +95,9 @@ services:
     environment:
       DOCKER_ENABLE_SECURITY: "false"
       SECURITY_ENABLELOGIN: "false"
-      # Serve a aplicação sob o subcaminho /pdf (atrás do gateway)
-      SERVER_SERVLET_CONTEXTPATH: "/pdf"
+      # Subcaminho nativo do Stirling (/pdf). O healthcheck embutido usa esta
+      # mesma variável, então o container reporta "healthy" corretamente.
+      SYSTEM_ROOTURIPATH: "/pdf"
       LANGS: "pt_BR,en_US"
     volumes:
       - stirling-data:/usr/share/tessdata
